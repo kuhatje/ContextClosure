@@ -56,12 +56,15 @@ const buildGraphFromPRs = (prs: any[]): Graph => {
   return { chunks, edges: [] };
 };
 
-const fetchPaged = async (url: string, token: string | null) => {
+const fetchPaged = async (
+  url: string,
+  token: string | null,
+): Promise<{ data: any[] } | { error: Response }> => {
   const all: any[] = [];
   let nextUrl: string | null = url;
 
   while (nextUrl) {
-    const res = await fetch(nextUrl, {
+    const res: Response = await fetch(nextUrl, {
       headers: {
         Accept: "application/vnd.github+json",
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
