@@ -17,11 +17,15 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const body = await req.json().catch(() => ({}));
-  const { size = 4, graph } = body as { size?: number; graph?: Graph };
-  if (!graph) {
-    return NextResponse.json({ error: "Graph is required." }, { status: 400 });
+  try {
+    const body = await req.json().catch(() => ({}));
+    const { size = 4, graph } = body as { size?: number; graph?: Graph };
+    if (!graph) {
+      return NextResponse.json({ error: "Graph is required." }, { status: 400 });
+    }
+    const closure = solveClosureBySize(graph, size);
+    return NextResponse.json({ closure, graphSize: Object.keys(graph.chunks).length });
+  } catch (err: any) {
+    return NextResponse.json({ error: err?.message ?? "Closure solve failed." }, { status: 500 });
   }
-  const closure = solveClosureBySize(graph, size);
-  return NextResponse.json({ closure, graphSize: Object.keys(graph.chunks).length });
 }
