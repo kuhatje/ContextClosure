@@ -81,7 +81,8 @@ export default function RepoRunner() {
       if (!res.ok || json.error || !json.closure) {
         setError(json.error ?? "Closure solve failed.");
       } else {
-        setResult((prev) => (prev ? { ...prev, closure: json.closure } : prev));
+        const closurePayload: ClosureSolution | null = json.closure ?? null;
+        setResult((prev) => (prev ? { ...prev, closure: closurePayload } : prev));
       }
     } catch (err: any) {
       setError(err?.message ?? "Unknown error.");

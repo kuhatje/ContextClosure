@@ -1,0 +1,129 @@
+\documentclass{beamer}
+\usetheme{Madrid}
+\usepackage{graphicx}
+\title{Context Closure Prototype}
+\author{Project Overview}
+\date{\today}
+
+\begin{document}
+
+\begin{frame}
+  \titlepage
+\end{frame}
+
+\begin{frame}
+  \frametitle{Motivation}
+  \begin{itemize}
+    \item Large codebases accumulate documentation debt across code, tickets, and discussions.\pause
+    \item Context windows (LLMs, humans) are bounded; dumping everything does not scale.\pause
+    \item We need a principled way to pick the \textbf{best, self-contained} context to fix docs.\pause
+    \item Turn noisy signals into a weighted, dependency-aware graph and solve for maximum value.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Problem Statement}
+  \begin{itemize}
+    \item Inputs: code activity (commits/PRs), issues/tickets, Slack/threads.\pause
+    \item Challenge: know which documentation gaps matter, and gather the needed context.\pause
+    \item Goal: a data structure and pipeline to prioritize and supply doc updates at scale.\pause
+    \item Constraint: bounded context; must avoid duplication and respect dependencies.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Key Observation}
+  \begin{itemize}
+    \item Unbounded data, bounded context: chunk the world into small pieces with dependencies.\pause
+    \item Use a directed graph of chunks; edges mean ``u depends on v''.\pause
+    \item Assign a utility weight to each chunk; higher = more valuable for next doc update.\pause
+    \item Select a maximum-weight closure of size $k$: self-contained, no outgoing edges.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Generalization (not pursued here)}
+  \begin{itemize}
+    \item $k$ can reflect resources (time, people), not just LLM context.\pause
+    \item Weights can encode task value beyond documentation.\pause
+    \item Closure solver still picks the highest-value self-contained project slice.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Prototype Scope}
+  \begin{itemize}
+    \item Next.js app (App Router) with API routes and UI.\pause
+    \item Python closure solver (Dinic, min-cut reduction) invoked from Node.\pause
+    \item Ingestion from GitHub issues/PRs (public repos) with simple weight heuristic.\pause
+    \item Interactive graph view; solve closure for user-specified $k$; highlight selection.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Data Model}
+  \begin{itemize}
+    \item \textbf{Chunk}: id, title, summary, sourceType, weight, component, tags, timestamps, sourceRef.\pause
+    \item \textbf{Edge}: directed dependency from $\rightarrow$ to.\pause
+    \item \textbf{Graph}: chunks + edges; deterministic layout for visualization.\pause
+    \item No synthetic dependencies in the core; optional deterministic ring for empty graphs.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Ingestion}
+  \begin{itemize}
+    \item Endpoint: `/api/ingest?repo=owner/name` (uses `GITHUB_TOKEN` if present).\pause
+    \item Fetches all open issues; falls back to open PRs if issues are empty.\pause
+    \item Weight heuristic: comments + reactions + base weight.\pause
+    \item Output: graph of chunks; solve optional closure for $k$.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Closure Solver}
+  \begin{itemize}
+    \item Maximum-weight closure via s-t min-cut (Dinic) in Python.\pause
+    \item Size targeting: penalty search + deterministic trimming to enforce $k$.\pause
+    \item Exposed through `/api/closure` (POST graph, size).\pause
+    \item Used by the UI after fetching chunks.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{UI Flow}
+  \begin{enumerate}
+    \item Fetch chunks for a repo (pan/zoom graph; click node for details).\pause
+    \item Enter $k$ and solve closure; selected nodes highlighted.\pause
+    \item Selected chunk cards listed below for doc/LLM consumption.
+  \end{enumerate}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Known Gaps}
+  \begin{itemize}
+    \item Dependency detection is naive (none inferred from issues/PRs today).\pause
+    \item Weighting is simplistic (comments + reactions); no recency decay or source trust.\pause
+    \item No persistence or incremental refresh; everything is in-memory per request.\pause
+    \item GitHub rate limits apply; `GITHUB_TOKEN` recommended.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Next Steps}
+  \begin{itemize}
+    \item Infer dependencies from links/mentions/files; persist graphs.\pause
+    \item Improve weighting (recency, churn, support signals, source credibility).\pause
+    \item Add closed issues/PRs and commit signals; incremental ingest.\pause
+    \item Enhance graph UX (filters, component grouping, export selected context).\pause
+    \item Harden deployment (env config, caching, rate-limit handling).
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Questions + Discussion}
+  \centering
+  \Huge Thank you!
+\end{frame}
+
+\end{document}
