@@ -22,7 +22,7 @@ Optional: `GITHUB_TOKEN=<token> npm run dev` for higher GitHub rate limits when 
 - Post-processed to enforce target size deterministically; edges are preserved and layout is deterministic.
 
 ## Ingestion
-- GitHub issues/PRs (live): `/api/ingest?repo=owner/name&size=4` uses `GITHUB_TOKEN` if present; unauthenticated is 60/hr. Fetches all open issues, falls back to open PRs if issues are empty. Chunks are built from the list; weights are derived from comments + reactions for a simple v0 signal. No mock fallback.
+- GitHub issues/PRs (live): `/api/ingest?repo=owner/name&size=4` uses `GITHUB_TOKEN` if present; unauthenticated is 60/hr. Fetches all open issues, falls back to open PRs if issues are empty. Chunks are built from the list; weights are derived from comments + reactions for a simple v0 signal.
 
 ## Query surface
 - `/api/closure?size=4`: POST a graph to this endpoint to run the solver. GET will respond with an error (no default graph).  
