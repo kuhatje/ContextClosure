@@ -135,22 +135,32 @@ export default function RepoRunner() {
             marginTop: 12,
           }}
         >
-          <input
-            type="number"
-            min={1}
-            value={k}
-            onChange={(e) => setK(Number.parseInt(e.target.value, 10) || 1)}
-            style={{
-              padding: "10px 12px",
-              borderRadius: 10,
-              border: "1px solid #1f2937",
-              background: "#0b1221",
-              color: "#e2e8f0",
-              width: 100,
-            }}
-            placeholder="k"
-            disabled={solving}
-          />
+        <input
+          inputMode="numeric"
+          pattern="[0-9]*"
+          value={k > 0 ? String(k) : ""}
+          onChange={(e) => {
+            const val = e.target.value;
+            if (val === "") {
+              setK(0);
+              return;
+            }
+            const parsed = Number.parseInt(val, 10);
+            if (!Number.isNaN(parsed) && parsed > 0) {
+              setK(parsed);
+            }
+          }}
+          style={{
+            padding: "10px 12px",
+            borderRadius: 10,
+            border: "1px solid #1f2937",
+            background: "#0b1221",
+            color: "#e2e8f0",
+            width: 120,
+          }}
+          placeholder="Enter k"
+          disabled={solving}
+        />
           <button
             type="button"
             disabled={solving}
@@ -202,7 +212,7 @@ export default function RepoRunner() {
             </div>
             <p style={{ marginTop: 8, opacity: 0.8 }}>
               Ingested {result.count ?? 0} items {result.source ? `(${result.source})` : "(issues)"}
-              . Weights derive from comments and reactions. Selected closure details are listed below.
+              . Weights derive from comments and reactions. Selected closure details are listed below, in descending order of weights.
             </p>
             {result.note ? <p style={{ marginTop: 0, opacity: 0.8 }}>{result.note}</p> : null}
           </div>
