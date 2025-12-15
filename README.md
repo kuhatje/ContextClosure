@@ -8,7 +8,7 @@ Next.js prototype that turns multi-source activity (code, issues, chat) into a w
 3) `npm run dev` (API routes: `/api/closure`, `/api/ingest`)  
 Optional: `GITHUB_TOKEN=<token> npm run dev` for higher GitHub rate limits when hitting `/api/ingest?repo=owner/name` (unauthenticated works but is limited to 60/hr).
 
-## Core data model
+## Principal data model
 - `Chunk`: bounded piece of context (id, title, summary, sourceType, weight, component, tags, timestamps, sourceRef).
 - `Edge`: directed dependency `from -> to` meaning `from` relies on `to`; closures must include all dependencies.
 - `Signal` (for ingestion): raw events such as GitHub issues/PRs, commits, Slack threads.
@@ -29,11 +29,6 @@ Optional: `GITHUB_TOKEN=<token> npm run dev` for higher GitHub rate limits when 
 - `/api/ingest?repo=owner/name&size=4`: pull GitHub issues into a graph and (optionally) solve closure for a target size. If issues are empty, falls back to open PRs; if both are empty, returns an empty graph/closure. Supports unauthenticated (60/hr) and uses `GITHUB_TOKEN` when present.  
 - UI (`app/page.tsx`): fetch chunks (issues/PRs), view an interactive graph (pan/zoom; click node for details; deterministic layout), solve closure for k (selected nodes highlighted), and view only the selected chunk details below.
 
-## Scalability + gaps (noted for follow-up)
-- Weight quality and dependency detection are fragile; v0 uses naive GitHub heuristics.  
-- Graph freshness/invalidation not implemented; would need incremental ingestion and recomputation.  
-- Chunking heuristics (per PR/issue) are simplistic and may over/under-split context.  
-- No persistent store yet; API responses are in-memory.
 
-## Generalization note
+## Generalization
 The same machinery works beyond LLM context: interpret chunks as tasks, weights as project utility, and `k` as available resources; the closure solver then selects the highest-value self-contained project slice. This prototype focuses on the documentation use case but keeps the solver/general structure reusable.
