@@ -1,4 +1,4 @@
-# Context Closure (prototype)
+# Sliding Context Window
 
 Next.js prototype that turns multi-source activity (code, issues, chat) into a weighted DAG of documentation chunks and uses an optimal-closure solver to pick the most valuable, self-contained context for updates or LLM prompts.
 
