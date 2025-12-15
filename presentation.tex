@@ -1,8 +1,8 @@
 \documentclass{beamer}
 \usetheme{Madrid}
 \usepackage{graphicx}
-\title{Context Closure Prototype}
-\author{Project Overview}
+\title{Context Closure: Concise Overview}
+\author{}
 \date{\today}
 
 \begin{document}
@@ -14,116 +14,78 @@
 \begin{frame}
   \frametitle{Motivation}
   \begin{itemize}
-    \item Large codebases accumulate documentation debt across code, tickets, and discussions.\pause
-    \item Context windows (LLMs, humans) are bounded; dumping everything does not scale.\pause
-    \item We need a principled way to pick the \textbf{best, self-contained} context to fix docs.\pause
-    \item Turn noisy signals into a weighted, dependency-aware graph and solve for maximum value.
+    \item Documentation depends on code, tickets, and discussions; signals are unbounded.\pause
+    \item LLM context windows (and human attention) are bounded.\pause
+    \item Scalability: we must pick the most valuable, self-contained context slice, not dump everything.\pause
+    \item Goal: organize signals to maximize documentation value within hard context limits.
   \end{itemize}
 \end{frame}
 
 \begin{frame}
-  \frametitle{Problem Statement}
+  \frametitle{Scalability $\Rightarrow$ Graph + Optimal Closure}
   \begin{itemize}
-    \item Inputs: code activity (commits/PRs), issues/tickets, Slack/threads.\pause
-    \item Challenge: know which documentation gaps matter, and gather the needed context.\pause
-    \item Goal: a data structure and pipeline to prioritize and supply doc updates at scale.\pause
-    \item Constraint: bounded context; must avoid duplication and respect dependencies.
+    \item Chunk the data (messages, issues, PRs, doc gaps) into nodes; remove duplication via dependencies (edges: $u \rightarrow v$ means $u$ needs $v$).\pause
+    \item Assign utility weight per chunk; higher = more value for next doc update.\pause
+    \item Select $k$ chunks that form a closure (no outgoing edges), maximizing total weight.\pause
+    \item This is exactly the \textbf{maximum-weight closure} problem.
   \end{itemize}
 \end{frame}
 
 \begin{frame}
-  \frametitle{Key Observation}
+  \frametitle{Optimal Closure Primer}
   \begin{itemize}
-    \item Unbounded data, bounded context: chunk the world into small pieces with dependencies.\pause
-    \item Use a directed graph of chunks; edges mean ``u depends on v''.\pause
-    \item Assign a utility weight to each chunk; higher = more valuable for next doc update.\pause
-    \item Select a maximum-weight closure of size $k$: self-contained, no outgoing edges.
+    \item Given a directed graph with weights, find a closed subset (no outgoing edges) with maximum total weight.\pause
+    \item Solvable via min-cut reduction (polynomial time).\pause
+    \item Our use: pick the best self-contained context under size/budget constraints.
   \end{itemize}
 \end{frame}
 
 \begin{frame}
-  \frametitle{Generalization (not pursued here)}
+  \frametitle{Example 1 (tiny)}
   \begin{itemize}
-    \item $k$ can reflect resources (time, people), not just LLM context.\pause
-    \item Weights can encode task value beyond documentation.\pause
-    \item Closure solver still picks the highest-value self-contained project slice.
+    \item Nodes: $A(5)$, $B(3)$, $C(-2)$; edges: $A \rightarrow B$, $B \rightarrow C$.\pause
+    \item Closures: $\{A,B,C\}$ (sum $6$), $\{B,C\}$ (sum $1$), $\{C\}$ (sum $-2$).\pause
+    \item Optimal: $\{A,B,C\}$ with weight $6$.
   \end{itemize}
 \end{frame}
 
 \begin{frame}
-  \frametitle{Prototype Scope}
+  \frametitle{Example 2 (medium)}
   \begin{itemize}
-    \item Next.js app (App Router) with API routes and UI.\pause
-    \item Python closure solver (Dinic, min-cut reduction) invoked from Node.\pause
-    \item Ingestion from GitHub issues/PRs (public repos) with simple weight heuristic.\pause
-    \item Interactive graph view; solve closure for user-specified $k$; highlight selection.
+    \item Nodes: $A(8), B(7), C(-4), D(5), E(-3)$.\pause
+    \item Edges: $A \rightarrow B$, $A \rightarrow C$, $B \rightarrow D$, $D \rightarrow E$.\pause
+    \item Candidate closures: $\{A,B,D,E,C\}$ (sum $13$), $\{A,B,D\}$ (sum $20$), $\{B,D\}$ (sum $12$).\pause
+    \item Optimal: $\{A,B,D\}$ with weight $20$.
   \end{itemize}
 \end{frame}
 
 \begin{frame}
-  \frametitle{Data Model}
+  \frametitle{Example 3 (larger)}
   \begin{itemize}
-    \item \textbf{Chunk}: id, title, summary, sourceType, weight, component, tags, timestamps, sourceRef.\pause
-    \item \textbf{Edge}: directed dependency from $\rightarrow$ to.\pause
-    \item \textbf{Graph}: chunks + edges; deterministic layout for visualization.\pause
-    \item No synthetic dependencies in the core; optional deterministic ring for empty graphs.
+    \item Nodes: 10+ with mixed positive/negative weights; layered dependencies.\pause
+    \item Edges form multiple chains and cross-links; removing a negative node may require dropping high-value parents.\pause
+    \item Visual takeaway: as size grows, closures are non-trivial to eyeball; algorithmic solution needed.
   \end{itemize}
 \end{frame}
 
 \begin{frame}
-  \frametitle{Ingestion}
+  \frametitle{Generalization}
   \begin{itemize}
-    \item Endpoint: `/api/ingest?repo=owner/name` (uses `GITHUB_TOKEN` if present).\pause
-    \item Fetches all open issues; falls back to open PRs if issues are empty.\pause
-    \item Weight heuristic: comments + reactions + base weight.\pause
-    \item Output: graph of chunks; solve optional closure for $k$.
+    \item $k$ need not be an LLM context limit; it can be any resource budget (time, people, memory).\pause
+    \item Weights can encode any utility (task priority, revenue, risk).\pause
+    \item Closure selection still yields the highest-value, self-contained subset for the chosen budget.\pause
+    \item LLM-driven docs are one special case; the method applies to broader task selection.
   \end{itemize}
 \end{frame}
 
 \begin{frame}
-  \frametitle{Closure Solver}
+  \frametitle{Drawbacks \& Mitigations}
   \begin{itemize}
-    \item Maximum-weight closure via s-t min-cut (Dinic) in Python.\pause
-    \item Size targeting: penalty search + deterministic trimming to enforce $k$.\pause
-    \item Exposed through `/api/closure` (POST graph, size).\pause
-    \item Used by the UI after fetching chunks.
+    \item Dependency detection may be incomplete or noisy $\rightarrow$ improve link extraction, allow human corrections.\pause
+    \item Weighting may be biased or stale $\rightarrow$ add recency decay, source trust, feedback loops.\pause
+    \item Graph churn and scale $\rightarrow$ incremental updates, caching, and persisted graphs.\pause
+    \item Empty or sparse edges $\rightarrow$ fallback visualization only (not for optimization), keep optimization on real edges.\pause
   \end{itemize}
-\end{frame}
-
-\begin{frame}
-  \frametitle{UI Flow}
-  \begin{enumerate}
-    \item Fetch chunks for a repo (pan/zoom graph; click node for details).\pause
-    \item Enter $k$ and solve closure; selected nodes highlighted.\pause
-    \item Selected chunk cards listed below for doc/LLM consumption.
-  \end{enumerate}
-\end{frame}
-
-\begin{frame}
-  \frametitle{Known Gaps}
-  \begin{itemize}
-    \item Dependency detection is naive (none inferred from issues/PRs today).\pause
-    \item Weighting is simplistic (comments + reactions); no recency decay or source trust.\pause
-    \item No persistence or incremental refresh; everything is in-memory per request.\pause
-    \item GitHub rate limits apply; `GITHUB_TOKEN` recommended.
-  \end{itemize}
-\end{frame}
-
-\begin{frame}
-  \frametitle{Next Steps}
-  \begin{itemize}
-    \item Infer dependencies from links/mentions/files; persist graphs.\pause
-    \item Improve weighting (recency, churn, support signals, source credibility).\pause
-    \item Add closed issues/PRs and commit signals; incremental ingest.\pause
-    \item Enhance graph UX (filters, component grouping, export selected context).\pause
-    \item Harden deployment (env config, caching, rate-limit handling).
-  \end{itemize}
-\end{frame}
-
-\begin{frame}
-  \frametitle{Questions + Discussion}
-  \centering
-  \Huge Thank you!
 \end{frame}
 
 \end{document}
