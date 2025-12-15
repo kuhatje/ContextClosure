@@ -9,3 +9,4 @@ dist
 .env.production
 .env.development
 .update_script
+sample.tex
