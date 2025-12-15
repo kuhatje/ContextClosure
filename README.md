@@ -5,7 +5,7 @@ Next.js prototype that turns multi-source activity (code, issues, chat) into a w
 ## Running locally
 1) `npm install`  
 2) Ensure `python3` is available on PATH (used by the closure solver).  
-3) `npm run dev` (API routes: `/api/closure`, `/api/ingest`, `/api/query`)  
+3) `npm run dev` (API routes: `/api/closure`, `/api/ingest`)  
 Optional: `GITHUB_TOKEN=<token> npm run dev` for higher GitHub rate limits when hitting `/api/ingest?repo=owner/name` (unauthenticated works but is limited to 60/hr).
 
 ## Core data model
@@ -19,16 +19,15 @@ Optional: `GITHUB_TOKEN=<token> npm run dev` for higher GitHub rate limits when 
 - Classic reduction of maximum-weight closure to s-t min-cut (Dinic). Positive `(weight - penalty)` edges go `source -> node`; negatives go `node -> sink`; dependency edges carry effectively infinite capacity. Nodes reachable from source form the closure.  
 - `maximumWeightClosure(graph)`: unconstrained optimum.  
 - `solveClosureBySize(graph, k)`: binary searches a per-node penalty to steer the closure toward size `k` (keeps dependency closure intact).  
-- All chunks are bounded; closures are therefore context-window friendly.
+- Post-processed to enforce target size deterministically; edges are preserved and layout is deterministic.
 
 ## Ingestion
-- Mock graph: always available via `/api/closure` and `/api/chunks`.  
-- GitHub issues (live): `/api/ingest?repo=owner/name` uses `GITHUB_TOKEN`. Issues become chunks; weights are derived from comments + reactions for a simple v0 signal.
+- GitHub issues/PRs (live): `/api/ingest?repo=owner/name&size=4` uses `GITHUB_TOKEN` if present; unauthenticated is 60/hr. Fetches all open issues, falls back to open PRs if issues are empty. Chunks are built from the list; weights are derived from comments + reactions for a simple v0 signal. No mock fallback.
 
 ## Query surface
 - `/api/closure?size=4`: POST a graph to this endpoint to run the solver. GET will respond with an error (no default graph).  
-- `/api/ingest?repo=owner/name&size=4&per_page=50`: pull GitHub issues into a graph and solve closure for a target size. If issues are empty, falls back to open PRs; if both are empty, returns an empty graph/closure. Supports unauthenticated (60/hr) and uses `GITHUB_TOKEN` when present. `per_page` caps at 100 (first page only).  
-- UI (`app/page.tsx`): minimal landing with an interactive form to run ingestion/closure on any public repo (no chunk info shown until you run a request).
+- `/api/ingest?repo=owner/name&size=4`: pull GitHub issues into a graph and (optionally) solve closure for a target size. If issues are empty, falls back to open PRs; if both are empty, returns an empty graph/closure. Supports unauthenticated (60/hr) and uses `GITHUB_TOKEN` when present.  
+- UI (`app/page.tsx`): fetch chunks (issues/PRs), view an interactive graph (pan/zoom; click node for details; deterministic layout), solve closure for k (selected nodes highlighted), and view only the selected chunk details below.
 
 ## Scalability + gaps (noted for follow-up)
 - Weight quality and dependency detection are fragile; v0 uses naive GitHub heuristics.  
